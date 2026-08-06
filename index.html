@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <!-- Pages refresh 2026-08-06 - 3 -->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+<meta
+  http-equiv="Content-Security-Policy"
+  content="
+    default-src 'self';
+    script-src 'self'
+      https://accounts.google.com
+      https://script.google.com
+      https://script.googleusercontent.com;
+    style-src 'self' 'unsafe-inline' https://accounts.google.com;
+    img-src 'self' data: blob: https:;
+    frame-src https://accounts.google.com;
+    connect-src 'self'
+      https://script.google.com
+      https://script.googleusercontent.com;
+    base-uri 'none';
+    form-action https://accounts.google.com https://script.google.com;
+    object-src 'none';
+  "
+>
+  <title>Wonder Lab Companion</title>
+  <link rel="stylesheet" href="css/app.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <section class="card">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Roscoe’s Wonder Lab</p>
+          <h1>Companion</h1>
+          <p id="status">Connecting to Wonder Lab…</p>
+        </div>
+      </header>
+
+      <div id="signinView" hidden>
+        <div id="googleButton"></div>
+      </div>
+
+      <div id="dashboardView" hidden>
+        <div class="profile-row">
+          <div class="profile">
+            <img id="profileImage" alt="" referrerpolicy="no-referrer" hidden>
+            <div>
+              <strong id="profileName"></strong>
+              <div id="profileEmail"></div>
+            </div>
+          </div>
+          <button id="signoutButton" class="button-secondary" type="button">Sign out</button>
+        </div>
+
+        <nav class="tabs" aria-label="Companion sections">
+          <button class="tab is-active" type="button" aria-selected="true">Picture Library</button>
+          <button class="tab" type="button" disabled>Drawings</button>
+          <button class="tab" type="button" disabled>Pairing</button>
+          <button class="tab" type="button" disabled>Wonder Log</button>
+        </nav>
+
+        <section class="panel" aria-labelledby="pictureLibraryHeading">
+          <div class="panel-heading">
+            <div>
+              <h2 id="pictureLibraryHeading">Picture Library</h2>
+              <p>Add pictures Roscoe can use in Picture Lab.</p>
+            </div>
+          </div>
+
+          <form id="pictureUploadForm" class="upload-form">
+            <label>
+              <span>Picture</span>
+              <input id="pictureFile" name="picture" type="file" accept="image/jpeg,image/png,image/webp" required>
+            </label>
+            <label>
+              <span>Spoken label</span>
+              <input id="pictureLabel" name="label" type="text" maxlength="80" placeholder="dog" required>
+            </label>
+            <button id="uploadPictureButton" type="submit">Add picture</button>
+            <p id="uploadStatus" class="form-status" aria-live="polite"></p>
+          </form>
+
+          <div id="pictureEmpty" class="empty-state" hidden>
+            <strong>No pictures yet</strong>
+            <p>Add the first image Roscoe will see in Picture Lab.</p>
+          </div>
+
+          <div id="pictureGrid" class="picture-grid" aria-live="polite"></div>
+        </section>
+      </div>
+
+      <div id="errorView" class="error" hidden></div>
+    </section>
+  </main>
+</body>
+</html>
