@@ -61,7 +61,7 @@
           <button class="tab is-active" type="button" data-section="pictures" aria-selected="true">Picture Library</button>
           <button class="tab" type="button" data-section="drawings" aria-selected="false">Drawings</button>
           <button class="tab" type="button" data-section="pairing" aria-selected="false">Pairing</button>
-          <button class="tab" type="button" disabled>Wonder Log</button>
+          <button class="tab" type="button" data-section="wonderlog" aria-selected="false">Wonder Log</button>
         </nav>
 
         <section id="picturesPanel" class="panel companion-panel" aria-labelledby="pictureLibraryHeading">
@@ -130,6 +130,70 @@
             <p>Tap the star in Art Lab to save a drawing.</p>
           </div>
           <div id="drawingGrid" class="drawing-grid" aria-live="polite"></div>
+        </section>
+
+        <section id="wonderLogPanel" class="panel companion-panel" aria-labelledby="wonderLogHeading" hidden>
+          <div class="panel-heading">
+            <div>
+              <h2 id="wonderLogHeading">Wonder Log</h2>
+              <p>A caregiver view of how the Wonder Lab is being used. These are observations, not developmental scores.</p>
+            </div>
+            <div class="wonder-log-controls">
+              <label>
+                <span>Show</span>
+                <select id="wonderLogDays">
+                  <option value="7">Last 7 days</option>
+                  <option value="30">Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                </select>
+              </label>
+              <button id="refreshWonderLog" class="button-secondary" type="button">Refresh</button>
+            </div>
+          </div>
+
+          <div id="wonderLogEmpty" class="empty-state" hidden>
+            <strong>No Wonder Log activity yet</strong>
+            <p>Once the paired tablet syncs a completed session, activity will appear here.</p>
+          </div>
+
+          <div id="wonderLogContent" hidden>
+            <div class="wonder-log-summary" aria-live="polite">
+              <article class="wonder-stat"><strong id="wonderTotalTime">—</strong><span>Lab time</span></article>
+              <article class="wonder-stat"><strong id="wonderFavoriteLab">—</strong><span>Favorite lab</span></article>
+              <article class="wonder-stat"><strong id="wonderSessions">—</strong><span>Sessions</span></article>
+              <article class="wonder-stat"><strong id="wonderAverageSession">—</strong><span>Average session</span></article>
+              <article class="wonder-stat"><strong id="wonderSavedDrawings">—</strong><span>Drawings saved</span></article>
+              <article class="wonder-stat"><strong id="wonderFavoritePaint">—</strong><span>Most-used paint</span></article>
+            </div>
+
+            <section class="wonder-log-section">
+              <h3>Time by lab</h3>
+              <div class="wonder-table-wrap">
+                <table class="wonder-table">
+                  <thead><tr><th>Lab</th><th>Time</th><th>Visits</th><th>Interactions</th></tr></thead>
+                  <tbody id="wonderLabRows"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="wonder-log-section">
+              <h3>Recent discoveries</h3>
+              <div id="wonderMilestones" class="wonder-list"></div>
+            </section>
+
+            <section class="wonder-log-section">
+              <h3>Recent sessions</h3>
+              <div id="wonderSessionsList" class="wonder-list"></div>
+            </section>
+
+            <section class="wonder-log-danger">
+              <div>
+                <strong>Erase Wonder Log</strong>
+                <p>Deletes synced sessions, observations, and discoveries from the Companion. It does not change any Lab or saved drawing.</p>
+              </div>
+              <button id="clearWonderLog" class="danger-button" type="button">Erase history</button>
+            </section>
+          </div>
         </section>
 
         <section id="pairingPanel" class="panel companion-panel" aria-labelledby="pairingHeading" hidden>

@@ -46,6 +46,21 @@
       drawingEmpty: document.getElementById('drawingEmpty'),
       drawingCount: document.getElementById('drawingCount'),
       refreshDrawings: document.getElementById('refreshDrawings'),
+      wonderLogPanel: document.getElementById('wonderLogPanel'),
+      wonderLogDays: document.getElementById('wonderLogDays'),
+      refreshWonderLog: document.getElementById('refreshWonderLog'),
+      wonderLogEmpty: document.getElementById('wonderLogEmpty'),
+      wonderLogContent: document.getElementById('wonderLogContent'),
+      wonderTotalTime: document.getElementById('wonderTotalTime'),
+      wonderFavoriteLab: document.getElementById('wonderFavoriteLab'),
+      wonderSessions: document.getElementById('wonderSessions'),
+      wonderAverageSession: document.getElementById('wonderAverageSession'),
+      wonderSavedDrawings: document.getElementById('wonderSavedDrawings'),
+      wonderFavoritePaint: document.getElementById('wonderFavoritePaint'),
+      wonderLabRows: document.getElementById('wonderLabRows'),
+      wonderMilestones: document.getElementById('wonderMilestones'),
+      wonderSessionsList: document.getElementById('wonderSessionsList'),
+      clearWonderLog: document.getElementById('clearWonderLog'),
       pairingPanel: document.getElementById('pairingPanel'),
       generatePairingCode: document.getElementById('generatePairingCode'),
       pairingCodeView: document.getElementById('pairingCodeView'),
@@ -67,6 +82,9 @@
     els.pictureGrid.addEventListener('click', handlePictureGridClick);
     els.drawingGrid.addEventListener('click', handleDrawingGridClick);
     els.refreshDrawings.addEventListener('click', () => refreshDrawings().catch((error) => window.alert(error.message)));
+    els.refreshWonderLog.addEventListener('click', () => refreshWonderLog().catch((error) => window.alert(error.message)));
+    els.wonderLogDays.addEventListener('change', () => refreshWonderLog().catch((error) => window.alert(error.message)));
+    els.clearWonderLog.addEventListener('click', clearWonderLog);
     document.querySelectorAll('.tab[data-section]').forEach((tab) => tab.addEventListener('click', () => showSection(tab.dataset.section)));
     els.generatePairingCode.addEventListener('click', generatePairingCode);
     els.refreshDevices.addEventListener('click', refreshDevices);
@@ -732,11 +750,105 @@
 
 
 
+
+  const WONDER_LABS = [
+    ['switchboard','Switch Lab'],['tapAndMake','Shape Lab'],['buttons','Action Lab'],['colorLight','Color Lab'],
+    ['drawing','Art Lab'],['physics','Motion Lab'],['pictureLab','Picture Lab'],['timeLab','Time Lab'],
+  ];
+
+  async function refreshWonderLog() {
+    const token = getSessionToken();
+    const days = Number(els.wonderLogDays.value || 7);
+    const result = await callBackend('getWonderLog', { sessionToken: token, days });
+    renderWonderLog(result);
+  }
+
+  function renderWonderLog(result) {
+    const summary = result.summary || {};
+    const labStats = result.labStats || {};
+    const sessions = result.recentSessions || [];
+    const milestones = result.milestones || [];
+    const hasData = Number(summary.sessions || 0) > 0 || WONDER_LABS.some(([id]) => Number(labStats[id]?.interactions || 0) > 0) || milestones.length > 0;
+    els.wonderLogEmpty.hidden = hasData;
+    els.wonderLogContent.hidden = !hasData;
+    if (!hasData) return;
+
+    els.wonderTotalTime.textContent = formatDuration(summary.totalMs || 0);
+    els.wonderFavoriteLab.textContent = wonderLabLabel(summary.favoriteLab);
+    els.wonderSessions.textContent = String(summary.sessions || 0);
+    els.wonderAverageSession.textContent = formatDuration(summary.averageMs || 0);
+    els.wonderSavedDrawings.textContent = String(summary.savedDrawings || 0);
+    els.wonderFavoritePaint.textContent = summary.favoritePaint ? capitalizeWord(summary.favoritePaint) : '—';
+
+    els.wonderLabRows.replaceChildren();
+    WONDER_LABS.forEach(([id, label]) => {
+      const stats = labStats[id] || {};
+      const row = document.createElement('tr');
+      [label, formatDuration(stats.durationMs || 0), String(stats.visits || 0), String(stats.interactions || 0)].forEach((text) => {
+        const cell = document.createElement('td'); cell.textContent = text; row.appendChild(cell);
+      });
+      els.wonderLabRows.appendChild(row);
+    });
+
+    els.wonderMilestones.replaceChildren();
+    if (!milestones.length) appendWonderEmpty(els.wonderMilestones, 'No discoveries recorded in this period.');
+    milestones.forEach((item) => {
+      const card = document.createElement('article'); card.className = 'wonder-list-item';
+      const title = document.createElement('strong'); title.textContent = item.label || 'Discovery';
+      const meta = document.createElement('span'); meta.textContent = `${wonderLabLabel(item.activity)} · ${formatDateTime(item.time)}`;
+      card.append(title, meta); els.wonderMilestones.appendChild(card);
+    });
+
+    els.wonderSessionsList.replaceChildren();
+    if (!sessions.length) appendWonderEmpty(els.wonderSessionsList, 'No completed sessions in this period.');
+    sessions.forEach((item) => {
+      const card = document.createElement('article'); card.className = 'wonder-list-item';
+      const title = document.createElement('strong'); title.textContent = formatDuration(item.durationMs || 0);
+      const meta = document.createElement('span'); meta.textContent = `${formatDateTime(item.startedAt)} · ${item.deviceName || 'Wonder Lab tablet'}`;
+      card.append(title, meta); els.wonderSessionsList.appendChild(card);
+    });
+  }
+
+  function appendWonderEmpty(container, text) {
+    const p = document.createElement('p'); p.className = 'wonder-inline-empty'; p.textContent = text; container.appendChild(p);
+  }
+
+  async function clearWonderLog() {
+    if (!window.confirm('Erase the synced Wonder Log history? Any observations that have not synced yet may still arrive later from the tablet.')) return;
+    els.clearWonderLog.disabled = true;
+    try {
+      await sendCommand('clearWonderLog', {});
+      await refreshWonderLog();
+    } catch (error) {
+      window.alert(error.message);
+    } finally {
+      els.clearWonderLog.disabled = false;
+    }
+  }
+
+  function wonderLabLabel(id) {
+    return WONDER_LABS.find(([key]) => key === id)?.[1] || (id ? String(id) : '—');
+  }
+
+  function formatDuration(ms) {
+    const totalMinutes = Math.max(0, Math.round(Number(ms || 0) / 60000));
+    if (totalMinutes < 60) return `${totalMinutes}m`;
+    const hours = Math.floor(totalMinutes / 60), minutes = totalMinutes % 60;
+    return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+
+  function capitalizeWord(value) {
+    const text = String(value || '');
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : '—';
+  }
+
   function showSection(section) {
     const pairing = section === 'pairing';
     const drawings = section === 'drawings';
+    const wonderlog = section === 'wonderlog';
     els.picturesPanel.hidden = section !== 'pictures';
     els.drawingsPanel.hidden = !drawings;
+    els.wonderLogPanel.hidden = !wonderlog;
     els.pairingPanel.hidden = !pairing;
     document.querySelectorAll('.tab[data-section]').forEach((tab) => {
       const active = tab.dataset.section === section;
@@ -745,6 +857,7 @@
     });
     if (pairing) refreshDevices().catch((error) => setPairingStatus(error.message, true));
     if (drawings) refreshDrawings().catch((error) => window.alert(error.message));
+    if (wonderlog) refreshWonderLog().catch((error) => window.alert(error.message));
   }
 
   async function generatePairingCode() {

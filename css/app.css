@@ -209,3 +209,27 @@ button {
 .drawing-actions{display:flex;gap:8px;flex-wrap:wrap}
 .drawing-actions button{padding:.6rem .9rem}
 .delete-drawing{background:white;color:#a21818;border-color:#a21818}
+
+/* Wonder Log */
+.wonder-log-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.wonder-log-controls label{display:grid;gap:4px;font-weight:700}
+.wonder-log-controls select{padding:.65rem .8rem;border:2px solid #17213a;border-radius:10px;background:#fff;font:inherit}
+.wonder-log-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0 28px}
+.wonder-stat{display:grid;gap:4px;padding:18px;border:3px solid #17213a;border-radius:16px;background:#fffdf7}
+.wonder-stat strong{font-size:clamp(1.5rem,4vw,2.35rem);line-height:1}
+.wonder-stat span{color:#657087;font-weight:700}
+.wonder-log-section{margin-top:28px}
+.wonder-log-section h3{margin-bottom:12px}
+.wonder-table-wrap{overflow-x:auto}
+.wonder-table{width:100%;border-collapse:collapse;background:#fff}
+.wonder-table th,.wonder-table td{padding:11px 10px;border-bottom:1px solid #c5cad4;text-align:left}
+.wonder-table th{font-size:.86rem;text-transform:uppercase;letter-spacing:.04em;color:#657087}
+.wonder-table td:first-child{font-weight:800}
+.wonder-list{display:grid;gap:10px}
+.wonder-list-item{display:grid;gap:3px;padding:13px 15px;border:2px solid #c5cad4;border-radius:13px;background:#fff}
+.wonder-list-item span,.wonder-inline-empty{color:#657087}
+.wonder-inline-empty{margin:0;padding:14px 0}
+.wonder-log-danger{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-top:36px;padding-top:24px;border-top:2px solid #d4d7df}
+.wonder-log-danger p{margin:.3rem 0 0;color:#657087;max-width:54rem}
+.danger-button{background:#fff;color:#a21818;border-color:#a21818;white-space:nowrap}
+@media(max-width:760px){.wonder-log-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.wonder-log-danger{align-items:flex-start;flex-direction:column}}
