@@ -199,3 +199,13 @@ button {
 .device-status.revoked { background:#f4dddd; }
 .revoke-device { background:white; color:#a21818; border-color:#a21818; }
 @media(max-width:600px){ .device-card{grid-template-columns:1fr}.revoke-device{justify-self:start} }
+
+/* Art Lab drawings */
+.drawing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;margin-top:24px}
+.drawing-card{display:grid;gap:12px;border:3px solid #17213a;border-radius:18px;padding:12px;background:white}
+.drawing-card img{width:100%;aspect-ratio:1.35;object-fit:contain;border:2px solid #c5cad4;border-radius:12px;background:#fff}
+.drawing-meta{display:grid;gap:3px}
+.drawing-meta span{color:#657087;font-size:.9rem}
+.drawing-actions{display:flex;gap:8px;flex-wrap:wrap}
+.drawing-actions button{padding:.6rem .9rem}
+.delete-drawing{background:white;color:#a21818;border-color:#a21818}

@@ -41,6 +41,11 @@
       pictureGrid: document.getElementById('pictureGrid'),
       pictureEmpty: document.getElementById('pictureEmpty'),
       picturesPanel: document.getElementById('picturesPanel'),
+      drawingsPanel: document.getElementById('drawingsPanel'),
+      drawingGrid: document.getElementById('drawingGrid'),
+      drawingEmpty: document.getElementById('drawingEmpty'),
+      drawingCount: document.getElementById('drawingCount'),
+      refreshDrawings: document.getElementById('refreshDrawings'),
       pairingPanel: document.getElementById('pairingPanel'),
       generatePairingCode: document.getElementById('generatePairingCode'),
       pairingCodeView: document.getElementById('pairingCodeView'),
@@ -60,6 +65,8 @@
     els.cropCanvas.addEventListener('pointerup', endCropDrag);
     els.cropCanvas.addEventListener('pointercancel', endCropDrag);
     els.pictureGrid.addEventListener('click', handlePictureGridClick);
+    els.drawingGrid.addEventListener('click', handleDrawingGridClick);
+    els.refreshDrawings.addEventListener('click', () => refreshDrawings().catch((error) => window.alert(error.message)));
     document.querySelectorAll('.tab[data-section]').forEach((tab) => tab.addEventListener('click', () => showSection(tab.dataset.section)));
     els.generatePairingCode.addEventListener('click', generatePairingCode);
     els.refreshDevices.addEventListener('click', refreshDevices);
@@ -277,7 +284,7 @@
       els.profileImage.hidden = true;
     }
 
-    await Promise.all([refreshPictureLibrary(), refreshDevices()]);
+    await Promise.all([refreshPictureLibrary(), refreshDrawings(), refreshDevices()]);
   }
 
   async function refreshPictureLibrary() {
@@ -341,6 +348,78 @@
       card.append(image, title, meta, button);
       els.pictureGrid.append(card);
     });
+  }
+
+  async function refreshDrawings() {
+    const token = getSessionToken();
+    const result = await callBackend('listDrawings', { sessionToken: token });
+    const drawings = result.drawings || [];
+    els.drawingCount.textContent = `${drawings.length} saved`;
+    renderDrawings(drawings);
+  }
+
+  function renderDrawings(drawings) {
+    els.drawingGrid.replaceChildren();
+    els.drawingEmpty.hidden = drawings.length !== 0;
+    drawings.forEach((drawing) => {
+      const card = document.createElement('article');
+      card.className = 'drawing-card';
+      card.dataset.drawingId = drawing.drawingId;
+
+      const image = document.createElement('img');
+      image.alt = `Art Lab drawing saved ${formatDateTime(drawing.createdAt)}`;
+      image.loading = 'lazy';
+      image.src = drawing.thumbnailDataUrl;
+
+      const meta = document.createElement('div');
+      meta.className = 'drawing-meta';
+      const date = document.createElement('strong');
+      date.textContent = formatDateTime(drawing.createdAt);
+      const details = document.createElement('span');
+      details.textContent = `${drawing.deviceName || 'Wonder Lab tablet'} · ${formatFileSize(drawing.sizeBytes)}`;
+      meta.append(date, details);
+
+      const actions = document.createElement('div');
+      actions.className = 'drawing-actions';
+      const download = document.createElement('button');
+      download.type = 'button'; download.dataset.action = 'download-drawing'; download.textContent = 'Download';
+      const remove = document.createElement('button');
+      remove.type = 'button'; remove.dataset.action = 'delete-drawing'; remove.className = 'delete-drawing'; remove.textContent = 'Delete';
+      actions.append(download, remove);
+      card.append(image, meta, actions);
+      els.drawingGrid.append(card);
+    });
+  }
+
+  async function handleDrawingGridClick(event) {
+    const button = event.target.closest('[data-action]');
+    if (!button) return;
+    const card = button.closest('.drawing-card');
+    const drawingId = card?.dataset.drawingId;
+    if (!drawingId) return;
+
+    if (button.dataset.action === 'delete-drawing') {
+      if (!window.confirm('Delete this saved drawing?')) return;
+      button.disabled = true; button.textContent = 'Deleting…';
+      try { await sendCommand('deleteDrawing', { drawingId }); await refreshDrawings(); }
+      catch (error) { button.disabled = false; button.textContent = 'Delete'; window.alert(error.message); }
+      return;
+    }
+
+    if (button.dataset.action === 'download-drawing') {
+      button.disabled = true; button.textContent = 'Preparing…';
+      try {
+        const result = await callBackend('getDrawingContent', { sessionToken: getSessionToken(), drawingId });
+        const bytes = Uint8Array.from(atob(result.imageBase64), (c) => c.charCodeAt(0));
+        const blob = new Blob([bytes], { type: result.mimeType || 'image/png' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = result.fileName || `wonder-lab-drawing-${drawingId}.png`;
+        document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) { window.alert(error.message); }
+      finally { button.disabled = false; button.textContent = 'Download'; }
+    }
   }
 
   async function handlePictureSelection() {
@@ -655,7 +734,9 @@
 
   function showSection(section) {
     const pairing = section === 'pairing';
-    els.picturesPanel.hidden = pairing;
+    const drawings = section === 'drawings';
+    els.picturesPanel.hidden = section !== 'pictures';
+    els.drawingsPanel.hidden = !drawings;
     els.pairingPanel.hidden = !pairing;
     document.querySelectorAll('.tab[data-section]').forEach((tab) => {
       const active = tab.dataset.section === section;
@@ -663,6 +744,7 @@
       tab.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     if (pairing) refreshDevices().catch((error) => setPairingStatus(error.message, true));
+    if (drawings) refreshDrawings().catch((error) => window.alert(error.message));
   }
 
   async function generatePairingCode() {

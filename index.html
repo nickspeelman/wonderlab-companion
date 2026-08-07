@@ -59,7 +59,7 @@
 
         <nav class="tabs" aria-label="Companion sections">
           <button class="tab is-active" type="button" data-section="pictures" aria-selected="true">Picture Library</button>
-          <button class="tab" type="button" disabled>Drawings</button>
+          <button class="tab" type="button" data-section="drawings" aria-selected="false">Drawings</button>
           <button class="tab" type="button" data-section="pairing" aria-selected="false">Pairing</button>
           <button class="tab" type="button" disabled>Wonder Log</button>
         </nav>
@@ -114,6 +114,24 @@
 
           <div id="pictureGrid" class="picture-grid" aria-live="polite"></div>
         </section>
+        <section id="drawingsPanel" class="panel companion-panel" aria-labelledby="drawingsHeading" hidden>
+          <div class="panel-heading">
+            <div>
+              <div class="picture-library-title-row">
+                <h2 id="drawingsHeading">Drawings</h2>
+                <span id="drawingCount" class="picture-count" aria-live="polite"></span>
+              </div>
+              <p>Artwork saved from Art Lab appears here automatically.</p>
+            </div>
+            <button id="refreshDrawings" class="button-secondary" type="button">Refresh</button>
+          </div>
+          <div id="drawingEmpty" class="empty-state" hidden>
+            <strong>No saved drawings yet</strong>
+            <p>Tap the star in Art Lab to save a drawing.</p>
+          </div>
+          <div id="drawingGrid" class="drawing-grid" aria-live="polite"></div>
+        </section>
+
         <section id="pairingPanel" class="panel companion-panel" aria-labelledby="pairingHeading" hidden>
           <div class="panel-heading">
             <div>
