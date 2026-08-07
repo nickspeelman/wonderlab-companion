@@ -465,7 +465,7 @@
       return;
     }
     const file = els.pictureFile.files[0];
-    const label = els.pictureLabel.value.trim();
+    const label = els.pictureLabel.value.trim().toLocaleUpperCase();
 
     if (!file || !label) {
       setUploadStatus('Choose a picture and enter its spoken label.', true);
