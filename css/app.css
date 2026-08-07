@@ -54,6 +54,25 @@ button {
 .panel-heading { justify-content: space-between; gap: 16px; }
 .panel-heading p { margin: 0; color: #526078; }
 
+.picture-library-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.picture-count {
+  color: #657087;
+  font-weight: 800;
+}
+.library-limit-message {
+  margin: 20px 0 -8px;
+  padding: 13px 16px;
+  border: 3px solid #17213a;
+  border-radius: 16px;
+  background: #fff2b8;
+}
+.library-limit-message[hidden] { display: none; }
+
 .upload-form {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(180px, .75fr) auto;

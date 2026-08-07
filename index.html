@@ -67,9 +67,16 @@
         <section class="panel" aria-labelledby="pictureLibraryHeading">
           <div class="panel-heading">
             <div>
-              <h2 id="pictureLibraryHeading">Picture Library</h2>
+              <div class="picture-library-title-row">
+                <h2 id="pictureLibraryHeading">Picture Library</h2>
+                <span id="pictureCount" class="picture-count" aria-live="polite"></span>
+              </div>
               <p>Add pictures Roscoe can use in Picture Lab.</p>
             </div>
+          </div>
+
+          <div id="pictureLimitMessage" class="library-limit-message" hidden>
+            <strong>Picture Library is full.</strong> Remove a picture before adding another.
           </div>
 
           <form id="pictureUploadForm" class="upload-form">

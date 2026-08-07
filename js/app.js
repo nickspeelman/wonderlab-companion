@@ -11,6 +11,9 @@
   let renderingGoogleButton = false;
   let currentUser = null;
   let cropState = null;
+  let pictureLibraryCount = 0;
+  let pictureLibraryLimit = 8;
+  let uploadBusy = false;
 
   document.addEventListener('DOMContentLoaded', init);
 
@@ -28,6 +31,8 @@
       pictureUploadForm: document.getElementById('pictureUploadForm'),
       pictureFile: document.getElementById('pictureFile'),
       pictureLabel: document.getElementById('pictureLabel'),
+      pictureCount: document.getElementById('pictureCount'),
+      pictureLimitMessage: document.getElementById('pictureLimitMessage'),
       cropEditor: document.getElementById('cropEditor'),
       cropCanvas: document.getElementById('cropCanvas'),
       cropZoom: document.getElementById('cropZoom'),
@@ -265,7 +270,32 @@
   async function refreshPictureLibrary() {
     const token = getSessionToken();
     const result = await callBackend('listPictures', { sessionToken: token });
-    renderPictures(result.pictures || []);
+    const pictures = result.pictures || [];
+    pictureLibraryCount = Number.isFinite(Number(result.count)) ? Number(result.count) : pictures.length;
+    pictureLibraryLimit = Number.isFinite(Number(result.limit)) ? Number(result.limit) : 8;
+    renderPictures(pictures);
+    updatePictureLibraryAvailability();
+  }
+
+  function updatePictureLibraryAvailability() {
+    const full = pictureLibraryCount >= pictureLibraryLimit;
+    els.pictureCount.textContent = `${pictureLibraryCount} of ${pictureLibraryLimit} pictures`;
+    els.pictureLimitMessage.hidden = !full;
+
+    els.pictureFile.disabled = uploadBusy || full;
+    els.pictureLabel.disabled = uploadBusy || full;
+    els.cropZoom.disabled = uploadBusy || full || !cropState;
+    els.uploadPictureButton.disabled = uploadBusy || full;
+    els.uploadPictureButton.textContent = full
+      ? 'Library full'
+      : uploadBusy
+        ? 'Adding…'
+        : 'Add picture';
+
+    if (full) {
+      resetCrop();
+      els.pictureFile.value = '';
+    }
   }
 
   function renderPictures(pictures) {
@@ -301,6 +331,11 @@
   }
 
   async function handlePictureSelection() {
+    if (pictureLibraryCount >= pictureLibraryLimit) {
+      updatePictureLibraryAvailability();
+      return;
+    }
+
     resetCrop();
 
     const file = els.pictureFile.files[0];
@@ -423,6 +458,12 @@
 
   async function uploadPicture(event) {
     event.preventDefault();
+
+    if (pictureLibraryCount >= pictureLibraryLimit) {
+      setUploadStatus('Picture Library is full. Remove a picture before adding another.', true);
+      updatePictureLibraryAvailability();
+      return;
+    }
     const file = els.pictureFile.files[0];
     const label = els.pictureLabel.value.trim();
 
@@ -558,11 +599,8 @@
   }
 
   function setUploadBusy(busy) {
-    els.pictureFile.disabled = busy;
-    els.pictureLabel.disabled = busy;
-    els.cropZoom.disabled = busy;
-    els.uploadPictureButton.disabled = busy;
-    els.uploadPictureButton.textContent = busy ? 'Adding…' : 'Add picture';
+    uploadBusy = busy;
+    updatePictureLibraryAvailability();
   }
 
   function setUploadStatus(message, isError = false) {
@@ -603,6 +641,7 @@
   function signOut() {
     localStorage.removeItem(storageKey);
     currentUser = null;
+    pictureLibraryCount = 0;
     resetCrop();
     els.pictureGrid.replaceChildren();
 
