@@ -77,6 +77,55 @@ button {
 }
 .form-status { grid-column: 1 / -1; min-height: 1.5em; margin: 0; font-weight: 700; }
 
+.crop-editor {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 2px solid #c5cad4;
+  border-radius: 18px;
+  background: white;
+}
+.crop-editor[hidden] { display: none; }
+.crop-copy {
+  display: grid;
+  gap: 3px;
+}
+.crop-copy span {
+  color: #657087;
+  font-size: .95rem;
+}
+.crop-workspace {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(160px, 1fr);
+  gap: 22px;
+  align-items: center;
+}
+#cropCanvas {
+  display: block;
+  width: min(100%, 320px);
+  height: auto;
+  aspect-ratio: 1;
+  border: 4px solid #17213a;
+  border-radius: 50%;
+  background: #ecebe5;
+  cursor: grab;
+  touch-action: none;
+  box-shadow: 0 0 0 8px #f2c400;
+  justify-self: center;
+}
+#cropCanvas.is-dragging { cursor: grabbing; }
+.zoom-control {
+  display: grid;
+  gap: 8px;
+}
+.zoom-control input[type="range"] {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  accent-color: #1565c0;
+}
+
 .picture-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -93,9 +142,10 @@ button {
 .picture-card img {
   width: 100%;
   aspect-ratio: 1;
-  object-fit: contain;
-  border-radius: 12px;
+  object-fit: cover;
+  border-radius: 50%;
   background: #f3f3ef;
+  border: 3px solid #17213a;
 }
 .picture-card h3 { margin: 0; font-size: 1.15rem; }
 .picture-meta { margin: 0; color: #657087; font-size: .9rem; }
@@ -110,5 +160,7 @@ button {
   .card { border-radius: 20px; box-shadow: 6px 6px 0 #f2c400; }
   .profile-row { align-items: flex-start; }
   .upload-form { grid-template-columns: 1fr; }
-  .form-status { grid-column: auto; }
+  .form-status,
+  .crop-editor { grid-column: auto; }
+  .crop-workspace { grid-template-columns: 1fr; }
 }

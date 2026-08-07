@@ -81,6 +81,21 @@
               <span>Spoken label</span>
               <input id="pictureLabel" name="label" type="text" maxlength="80" placeholder="dog" required>
             </label>
+
+            <div id="cropEditor" class="crop-editor" hidden>
+              <div class="crop-copy">
+                <strong>Crop picture</strong>
+                <span>Drag to position. Use zoom to fill the circle.</span>
+              </div>
+              <div class="crop-workspace">
+                <canvas id="cropCanvas" width="600" height="600" aria-label="Picture crop preview"></canvas>
+                <label class="zoom-control">
+                  <span>Zoom</span>
+                  <input id="cropZoom" type="range" min="1" max="3.5" step="0.01" value="1">
+                </label>
+              </div>
+            </div>
+
             <button id="uploadPictureButton" type="submit">Add picture</button>
             <p id="uploadStatus" class="form-status" aria-live="polite"></p>
           </form>

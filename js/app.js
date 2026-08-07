@@ -3,10 +3,14 @@
 
   const config = window.WONDER_LAB_CONFIG;
   const storageKey = 'wonderLabCompanionSession';
+  const CROP_SIZE = 600;
+  const UPLOAD_SIZE = 900;
+  const THUMBNAIL_SIZE = 220;
   const els = {};
   let jsonpCounter = 0;
   let renderingGoogleButton = false;
   let currentUser = null;
+  let cropState = null;
 
   document.addEventListener('DOMContentLoaded', init);
 
@@ -24,6 +28,9 @@
       pictureUploadForm: document.getElementById('pictureUploadForm'),
       pictureFile: document.getElementById('pictureFile'),
       pictureLabel: document.getElementById('pictureLabel'),
+      cropEditor: document.getElementById('cropEditor'),
+      cropCanvas: document.getElementById('cropCanvas'),
+      cropZoom: document.getElementById('cropZoom'),
       uploadPictureButton: document.getElementById('uploadPictureButton'),
       uploadStatus: document.getElementById('uploadStatus'),
       pictureGrid: document.getElementById('pictureGrid'),
@@ -32,6 +39,12 @@
 
     els.signoutButton.addEventListener('click', signOut);
     els.pictureUploadForm.addEventListener('submit', uploadPicture);
+    els.pictureFile.addEventListener('change', handlePictureSelection);
+    els.cropZoom.addEventListener('input', handleCropZoom);
+    els.cropCanvas.addEventListener('pointerdown', beginCropDrag);
+    els.cropCanvas.addEventListener('pointermove', moveCropDrag);
+    els.cropCanvas.addEventListener('pointerup', endCropDrag);
+    els.cropCanvas.addEventListener('pointercancel', endCropDrag);
     els.pictureGrid.addEventListener('click', handlePictureGridClick);
 
     try {
@@ -68,9 +81,7 @@
 
     clearAuthenticationFragment();
 
-    if (authError) {
-      throw new Error(authError);
-    }
+    if (authError) throw new Error(authError);
 
     els.status.textContent = 'Completing sign-in…';
     const result = await callBackend('claimLoginCode', { code });
@@ -95,7 +106,6 @@
         localStorage.removeItem(storageKey);
       }
     }
-
     await showSignIn();
   }
 
@@ -184,11 +194,8 @@
 
       window[callbackName] = (result) => {
         cleanup();
-        if (result && result.ok) {
-          resolve(result.payload);
-        } else {
-          reject(new Error(result && result.error ? result.error : 'Wonder Lab backend error.'));
-        }
+        if (result && result.ok) resolve(result.payload);
+        else reject(new Error(result && result.error ? result.error : 'Wonder Lab backend error.'));
       };
 
       script.onerror = () => {
@@ -293,6 +300,127 @@
     });
   }
 
+  async function handlePictureSelection() {
+    resetCrop();
+
+    const file = els.pictureFile.files[0];
+    if (!file) return;
+
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+      setUploadStatus('Choose a JPEG, PNG, or WebP image.', true);
+      els.pictureFile.value = '';
+      return;
+    }
+
+    setUploadStatus('Preparing crop…');
+
+    try {
+      const image = await loadImage(file);
+      const baseScale = Math.max(CROP_SIZE / image.naturalWidth, CROP_SIZE / image.naturalHeight);
+
+      cropState = {
+        image,
+        baseScale,
+        zoom: 1,
+        x: (CROP_SIZE - image.naturalWidth * baseScale) / 2,
+        y: (CROP_SIZE - image.naturalHeight * baseScale) / 2,
+        dragging: false,
+        pointerId: null,
+        lastClientX: 0,
+        lastClientY: 0,
+      };
+
+      els.cropZoom.value = '1';
+      els.cropEditor.hidden = false;
+      clampCropPosition();
+      renderCropPreview();
+      setUploadStatus('');
+    } catch (error) {
+      resetCrop();
+      setUploadStatus(error.message, true);
+    }
+  }
+
+  function handleCropZoom() {
+    if (!cropState) return;
+
+    const oldScale = cropState.baseScale * cropState.zoom;
+    const focusImageX = (CROP_SIZE / 2 - cropState.x) / oldScale;
+    const focusImageY = (CROP_SIZE / 2 - cropState.y) / oldScale;
+
+    cropState.zoom = Number(els.cropZoom.value);
+    const newScale = cropState.baseScale * cropState.zoom;
+
+    cropState.x = CROP_SIZE / 2 - focusImageX * newScale;
+    cropState.y = CROP_SIZE / 2 - focusImageY * newScale;
+
+    clampCropPosition();
+    renderCropPreview();
+  }
+
+  function beginCropDrag(event) {
+    if (!cropState) return;
+    cropState.dragging = true;
+    cropState.pointerId = event.pointerId;
+    cropState.lastClientX = event.clientX;
+    cropState.lastClientY = event.clientY;
+    els.cropCanvas.classList.add('is-dragging');
+    els.cropCanvas.setPointerCapture(event.pointerId);
+  }
+
+  function moveCropDrag(event) {
+    if (!cropState || !cropState.dragging || event.pointerId !== cropState.pointerId) return;
+
+    const rect = els.cropCanvas.getBoundingClientRect();
+    const unitsPerCssPixel = CROP_SIZE / rect.width;
+    const dx = (event.clientX - cropState.lastClientX) * unitsPerCssPixel;
+    const dy = (event.clientY - cropState.lastClientY) * unitsPerCssPixel;
+
+    cropState.lastClientX = event.clientX;
+    cropState.lastClientY = event.clientY;
+    cropState.x += dx;
+    cropState.y += dy;
+
+    clampCropPosition();
+    renderCropPreview();
+  }
+
+  function endCropDrag(event) {
+    if (!cropState || event.pointerId !== cropState.pointerId) return;
+    cropState.dragging = false;
+    cropState.pointerId = null;
+    els.cropCanvas.classList.remove('is-dragging');
+
+    if (els.cropCanvas.hasPointerCapture(event.pointerId)) {
+      els.cropCanvas.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function clampCropPosition() {
+    if (!cropState) return;
+
+    const scale = cropState.baseScale * cropState.zoom;
+    const width = cropState.image.naturalWidth * scale;
+    const height = cropState.image.naturalHeight * scale;
+
+    cropState.x = Math.min(0, Math.max(CROP_SIZE - width, cropState.x));
+    cropState.y = Math.min(0, Math.max(CROP_SIZE - height, cropState.y));
+  }
+
+  function renderCropPreview() {
+    if (!cropState) return;
+
+    const context = els.cropCanvas.getContext('2d', { alpha: false });
+    const scale = cropState.baseScale * cropState.zoom;
+    const width = cropState.image.naturalWidth * scale;
+    const height = cropState.image.naturalHeight * scale;
+
+    context.clearRect(0, 0, CROP_SIZE, CROP_SIZE);
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, CROP_SIZE, CROP_SIZE);
+    context.drawImage(cropState.image, cropState.x, cropState.y, width, height);
+  }
+
   async function uploadPicture(event) {
     event.preventDefault();
     const file = els.pictureFile.files[0];
@@ -303,20 +431,27 @@
       return;
     }
 
+    if (!cropState) {
+      setUploadStatus('Wait for the picture crop to finish loading.', true);
+      return;
+    }
+
     setUploadBusy(true);
-    setUploadStatus('Preparing picture…');
+    setUploadStatus('Preparing cropped picture…');
 
     try {
-      const prepared = await prepareImage(file);
+      const prepared = prepareCroppedImage();
       setUploadStatus('Uploading picture…');
+
       await sendCommand('uploadPicture', {
         label,
-        fileName: file.name,
+        fileName: replaceFileExtension(file.name, '.jpg'),
         imageBase64: prepared.imageBase64,
         thumbnailDataUrl: prepared.thumbnailDataUrl,
       });
 
       els.pictureUploadForm.reset();
+      resetCrop();
       setUploadStatus('Picture added.');
       await refreshPictureLibrary();
     } catch (error) {
@@ -326,34 +461,9 @@
     }
   }
 
-  async function handlePictureGridClick(event) {
-    const button = event.target.closest('[data-action="delete-picture"]');
-    if (!button) return;
-
-    const card = button.closest('.picture-card');
-    const label = card.querySelector('h3').textContent;
-    if (!window.confirm(`Delete “${label}” from the Picture Library?`)) return;
-
-    button.disabled = true;
-    button.textContent = 'Deleting…';
-    try {
-      await sendCommand('deletePicture', { pictureId: card.dataset.pictureId });
-      await refreshPictureLibrary();
-    } catch (error) {
-      button.disabled = false;
-      button.textContent = 'Delete';
-      window.alert(error.message);
-    }
-  }
-
-  async function prepareImage(file) {
-    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
-      throw new Error('Choose a JPEG, PNG, or WebP image.');
-    }
-
-    const source = await loadImage(file);
-    const imageDataUrl = renderImageToJpeg(source, 1200, .82);
-    const thumbnailDataUrl = renderImageToJpeg(source, 220, .68);
+  function prepareCroppedImage() {
+    const imageDataUrl = renderCropToJpeg(UPLOAD_SIZE, .84);
+    const thumbnailDataUrl = renderCropToJpeg(THUMBNAIL_SIZE, .72);
     const imageBase64 = imageDataUrl.split(',')[1];
 
     if (base64ByteLength(imageBase64) > 2 * 1024 * 1024) {
@@ -366,39 +476,91 @@
     return { imageBase64, thumbnailDataUrl };
   }
 
+  function renderCropToJpeg(outputSize, quality) {
+    if (!cropState) throw new Error('No picture is ready to crop.');
+
+    const canvas = document.createElement('canvas');
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+
+    const context = canvas.getContext('2d', { alpha: false });
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, outputSize, outputSize);
+
+    const outputScale = outputSize / CROP_SIZE;
+    const scale = cropState.baseScale * cropState.zoom * outputScale;
+    const x = cropState.x * outputScale;
+    const y = cropState.y * outputScale;
+
+    context.drawImage(
+      cropState.image,
+      x,
+      y,
+      cropState.image.naturalWidth * scale,
+      cropState.image.naturalHeight * scale
+    );
+
+    return canvas.toDataURL('image/jpeg', quality);
+  }
+
+  function resetCrop() {
+    cropState = null;
+
+    if (els.cropEditor) els.cropEditor.hidden = true;
+
+    if (els.cropCanvas) {
+      const context = els.cropCanvas.getContext('2d');
+      context.clearRect(0, 0, CROP_SIZE, CROP_SIZE);
+      els.cropCanvas.classList.remove('is-dragging');
+    }
+
+    if (els.cropZoom) els.cropZoom.value = '1';
+  }
+
   function loadImage(file) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const image = new Image();
+
       image.onload = () => {
         URL.revokeObjectURL(url);
         resolve(image);
       };
+
       image.onerror = () => {
         URL.revokeObjectURL(url);
         reject(new Error('The selected image could not be read.'));
       };
+
       image.src = url;
     });
   }
 
-  function renderImageToJpeg(image, maxDimension, quality) {
-    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
-    const width = Math.max(1, Math.round(image.naturalWidth * scale));
-    const height = Math.max(1, Math.round(image.naturalHeight * scale));
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d', { alpha: false });
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, width, height);
-    context.drawImage(image, 0, 0, width, height);
-    return canvas.toDataURL('image/jpeg', quality);
+  async function handlePictureGridClick(event) {
+    const button = event.target.closest('[data-action="delete-picture"]');
+    if (!button) return;
+
+    const card = button.closest('.picture-card');
+    const label = card.querySelector('h3').textContent;
+    if (!window.confirm(`Delete “${label}” from the Picture Library?`)) return;
+
+    button.disabled = true;
+    button.textContent = 'Deleting…';
+
+    try {
+      await sendCommand('deletePicture', { pictureId: card.dataset.pictureId });
+      await refreshPictureLibrary();
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = 'Delete';
+      window.alert(error.message);
+    }
   }
 
   function setUploadBusy(busy) {
     els.pictureFile.disabled = busy;
     els.pictureLabel.disabled = busy;
+    els.cropZoom.disabled = busy;
     els.uploadPictureButton.disabled = busy;
     els.uploadPictureButton.textContent = busy ? 'Adding…' : 'Add picture';
   }
@@ -426,6 +588,11 @@
     return Math.floor(base64.length * 3 / 4) - (base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0);
   }
 
+  function replaceFileExtension(fileName, extension) {
+    const base = String(fileName || 'picture').replace(/\.[^.]+$/, '');
+    return `${base || 'picture'}${extension}`;
+  }
+
   function formatFileSize(bytes) {
     const value = Number(bytes || 0);
     if (value < 1024) return `${value} bytes`;
@@ -436,10 +603,13 @@
   function signOut() {
     localStorage.removeItem(storageKey);
     currentUser = null;
+    resetCrop();
     els.pictureGrid.replaceChildren();
+
     if (window.google && google.accounts && google.accounts.id) {
       google.accounts.id.disableAutoSelect();
     }
+
     showSignIn().catch((error) => showError(error.message));
   }
 
