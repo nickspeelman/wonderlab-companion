@@ -40,6 +40,15 @@
       uploadStatus: document.getElementById('uploadStatus'),
       pictureGrid: document.getElementById('pictureGrid'),
       pictureEmpty: document.getElementById('pictureEmpty'),
+      picturesPanel: document.getElementById('picturesPanel'),
+      pairingPanel: document.getElementById('pairingPanel'),
+      generatePairingCode: document.getElementById('generatePairingCode'),
+      pairingCodeView: document.getElementById('pairingCodeView'),
+      pairingCode: document.getElementById('pairingCode'),
+      pairingExpiry: document.getElementById('pairingExpiry'),
+      pairingStatus: document.getElementById('pairingStatus'),
+      refreshDevices: document.getElementById('refreshDevices'),
+      pairedDevices: document.getElementById('pairedDevices'),
     });
 
     els.signoutButton.addEventListener('click', signOut);
@@ -51,6 +60,10 @@
     els.cropCanvas.addEventListener('pointerup', endCropDrag);
     els.cropCanvas.addEventListener('pointercancel', endCropDrag);
     els.pictureGrid.addEventListener('click', handlePictureGridClick);
+    document.querySelectorAll('.tab[data-section]').forEach((tab) => tab.addEventListener('click', () => showSection(tab.dataset.section)));
+    els.generatePairingCode.addEventListener('click', generatePairingCode);
+    els.refreshDevices.addEventListener('click', refreshDevices);
+    els.pairedDevices.addEventListener('click', handleDeviceClick);
 
     try {
       validateConfig();
@@ -264,7 +277,7 @@
       els.profileImage.hidden = true;
     }
 
-    await refreshPictureLibrary();
+    await Promise.all([refreshPictureLibrary(), refreshDevices()]);
   }
 
   async function refreshPictureLibrary() {
@@ -636,6 +649,112 @@
     if (value < 1024) return `${value} bytes`;
     if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
     return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+
+
+  function showSection(section) {
+    const pairing = section === 'pairing';
+    els.picturesPanel.hidden = pairing;
+    els.pairingPanel.hidden = !pairing;
+    document.querySelectorAll('.tab[data-section]').forEach((tab) => {
+      const active = tab.dataset.section === section;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    if (pairing) refreshDevices().catch((error) => setPairingStatus(error.message, true));
+  }
+
+  async function generatePairingCode() {
+    els.generatePairingCode.disabled = true;
+    setPairingStatus('Generating code…');
+    try {
+      const result = await callBackend('createPairingCode', { sessionToken: getSessionToken() });
+      els.pairingCode.textContent = result.displayCode || result.code || '';
+      els.pairingExpiry.textContent = `Valid for 10 minutes. Expires ${formatDateTime(result.expiresAt)}.`;
+      els.pairingCodeView.hidden = false;
+      setPairingStatus('Enter this code on the tablet in Parental Controls → Device pairing.');
+    } catch (error) {
+      setPairingStatus(error.message, true);
+    } finally {
+      els.generatePairingCode.disabled = false;
+    }
+  }
+
+  async function refreshDevices() {
+    const token = getSessionToken();
+    if (!token || !els.pairedDevices) return;
+    const result = await callBackend('listDevices', { sessionToken: token });
+    renderDevices(result.devices || []);
+  }
+
+  function renderDevices(devices) {
+    els.pairedDevices.replaceChildren();
+    if (!devices.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'No tablets have been paired yet.';
+      els.pairedDevices.appendChild(empty);
+      return;
+    }
+
+    devices.forEach((device) => {
+      const card = document.createElement('article');
+      card.className = 'device-card';
+      card.dataset.deviceId = device.deviceId;
+
+      const info = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = device.deviceName || 'Wonder Lab tablet';
+      const status = document.createElement('span');
+      status.className = `device-status ${device.status === 'revoked' ? 'revoked' : ''}`;
+      status.textContent = device.status || 'active';
+      const meta = document.createElement('p');
+      const seen = device.lastSeenAt ? `Last seen ${formatDateTime(device.lastSeenAt)}` : 'Not seen yet';
+      meta.textContent = `Paired ${formatDateTime(device.pairedAt)} · ${seen}`;
+      info.append(title, status, meta);
+      card.appendChild(info);
+
+      if (device.status !== 'revoked') {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'revoke-device';
+        button.dataset.action = 'revoke-device';
+        button.textContent = 'Revoke';
+        card.appendChild(button);
+      }
+      els.pairedDevices.appendChild(card);
+    });
+  }
+
+  async function handleDeviceClick(event) {
+    const button = event.target.closest('[data-action="revoke-device"]');
+    if (!button) return;
+    const card = button.closest('.device-card');
+    const name = card.querySelector('strong')?.textContent || 'this tablet';
+    if (!window.confirm(`Revoke ${name}? It will stop syncing until it is paired again.`)) return;
+
+    button.disabled = true;
+    try {
+      await sendCommand('revokeDevice', { deviceId: card.dataset.deviceId });
+      await refreshDevices();
+      setPairingStatus('Device revoked.');
+    } catch (error) {
+      button.disabled = false;
+      setPairingStatus(error.message, true);
+    }
+  }
+
+  function setPairingStatus(message, isError = false) {
+    if (!els.pairingStatus) return;
+    els.pairingStatus.textContent = message || '';
+    els.pairingStatus.style.color = isError ? '#8b0000' : '';
+  }
+
+  function formatDateTime(value) {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return '—';
+    return date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
   }
 
   function signOut() {

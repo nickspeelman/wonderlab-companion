@@ -58,13 +58,13 @@
         </div>
 
         <nav class="tabs" aria-label="Companion sections">
-          <button class="tab is-active" type="button" aria-selected="true">Picture Library</button>
+          <button class="tab is-active" type="button" data-section="pictures" aria-selected="true">Picture Library</button>
           <button class="tab" type="button" disabled>Drawings</button>
-          <button class="tab" type="button" disabled>Pairing</button>
+          <button class="tab" type="button" data-section="pairing" aria-selected="false">Pairing</button>
           <button class="tab" type="button" disabled>Wonder Log</button>
         </nav>
 
-        <section class="panel" aria-labelledby="pictureLibraryHeading">
+        <section id="picturesPanel" class="panel companion-panel" aria-labelledby="pictureLibraryHeading">
           <div class="panel-heading">
             <div>
               <div class="picture-library-title-row">
@@ -113,6 +113,29 @@
           </div>
 
           <div id="pictureGrid" class="picture-grid" aria-live="polite"></div>
+        </section>
+        <section id="pairingPanel" class="panel companion-panel" aria-labelledby="pairingHeading" hidden>
+          <div class="panel-heading">
+            <div>
+              <h2 id="pairingHeading">Pair a tablet</h2>
+              <p>Generate a one-time code, then enter it in Parental Controls on the Wonder Lab tablet.</p>
+            </div>
+          </div>
+
+          <div class="pairing-card">
+            <button id="generatePairingCode" type="button">Generate pairing code</button>
+            <div id="pairingCodeView" class="pairing-code-view" hidden>
+              <div id="pairingCode" class="pairing-code" aria-live="polite"></div>
+              <p id="pairingExpiry" class="pairing-expiry"></p>
+            </div>
+            <p id="pairingStatus" class="form-status" aria-live="polite"></p>
+          </div>
+
+          <div class="paired-devices-heading">
+            <h3>Paired devices</h3>
+            <button id="refreshDevices" class="button-secondary" type="button">Refresh</button>
+          </div>
+          <div id="pairedDevices" class="paired-devices"></div>
         </section>
       </div>
 

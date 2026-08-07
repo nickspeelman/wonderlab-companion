@@ -183,3 +183,19 @@ button {
   .crop-editor { grid-column: auto; }
   .crop-workspace { grid-template-columns: 1fr; }
 }
+
+
+.companion-panel[hidden] { display:none; }
+.pairing-card { margin:24px 0; padding:20px; border:3px solid #17213a; border-radius:20px; background:#f8f7f2; }
+.pairing-code-view { margin-top:18px; text-align:center; }
+.pairing-code { font-size:clamp(2.4rem,8vw,5rem); line-height:1; font-weight:900; letter-spacing:.12em; font-variant-numeric:tabular-nums; }
+.pairing-expiry { margin:.7rem 0 0; color:#657087; font-weight:700; }
+.paired-devices-heading { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:30px; }
+.paired-devices-heading h3 { margin:0; }
+.paired-devices { display:grid; gap:12px; margin-top:12px; }
+.device-card { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; border:3px solid #17213a; border-radius:16px; padding:14px; background:white; }
+.device-card p { margin:.2rem 0 0; color:#657087; font-size:.92rem; }
+.device-status { display:inline-block; margin-left:8px; padding:.15rem .5rem; border-radius:999px; background:#dff3e9; font-size:.78rem; text-transform:uppercase; }
+.device-status.revoked { background:#f4dddd; }
+.revoke-device { background:white; color:#a21818; border-color:#a21818; }
+@media(max-width:600px){ .device-card{grid-template-columns:1fr}.revoke-device{justify-self:start} }
