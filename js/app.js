@@ -206,9 +206,12 @@
     });
   }
 
-  function callBackend(action, params = {}) {
+  function callBackend(action, params = {}, options = {}) {
     const callbackName = '__wonderLabJsonp' + (++jsonpCounter);
     const url = new URL(config.backendUrl);
+    const timeoutMs = options.timeoutMs || (action === 'health' ? 60000 : 45000);
+    const lateCallbackLifetimeMs = Math.max(timeoutMs * 2, 120000);
+
     url.searchParams.set('action', action);
     url.searchParams.set('callback', callbackName);
 
@@ -220,14 +223,10 @@
 
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error('Wonder Lab backend request timed out.'));
-      }, 30000);
+      let settled = false;
+      let timeout;
 
-      function cleanup() {
-        clearTimeout(timeout);
-        script.remove();
+      function removeCallback() {
         try {
           delete window[callbackName];
         } catch (_) {
@@ -235,13 +234,40 @@
         }
       }
 
+      function cleanup(removeGlobalCallback = true) {
+        clearTimeout(timeout);
+        script.remove();
+        script.onerror = null;
+        if (removeGlobalCallback) removeCallback();
+      }
+
+      function preserveLateCallback() {
+        // JSONP cannot cancel a response that is already in flight. If Apps Script
+        // finishes after our local timeout, keep a harmless callback around so the
+        // late response does not throw an uncaught ReferenceError in the page.
+        window[callbackName] = () => {};
+        window.setTimeout(removeCallback, lateCallbackLifetimeMs);
+      }
+
+      timeout = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup(false);
+        preserveLateCallback();
+        reject(new Error('Wonder Lab backend request timed out.'));
+      }, timeoutMs);
+
       window[callbackName] = (result) => {
+        if (settled) return;
+        settled = true;
         cleanup();
         if (result && result.ok) resolve(result.payload);
         else reject(new Error(result && result.error ? result.error : 'Wonder Lab backend error.'));
       };
 
       script.onerror = () => {
+        if (settled) return;
+        settled = true;
         cleanup();
         reject(new Error('Could not reach the Wonder Lab backend.'));
       };
